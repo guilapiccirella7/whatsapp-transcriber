@@ -163,3 +163,6 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 // ── START ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`[BOT] Servidor na porta ${PORT}`));
+
+// Keep-alive ping (chamado pelo UptimeRobot a cada 5min)
+app.get('/ping', (req, res) => res.json({ status: 'alive', ts: Date.now() }));
