@@ -108,18 +108,20 @@ async function processAudio({ from, to, mediaUrl, mediaType }) {
       messages: [
         {
           role: 'system',
-          content: 'Você é um assistente que cria resumos concisos de transcrições de áudio do WhatsApp. Responda sempre em português. Seja direto e objetivo. Destaque os pontos principais em 2-4 frases.',
+          content: 'Você é um assistente de transcrição. Sua única função é resumir o conteúdo de áudios transcritos em 2-4 frases diretas em português. Resuma fielmente o que foi dito, sem julgamentos, sem recusar, sem comentários adicionais. Apenas o resumo do conteúdo.',
         },
         {
           role: 'user',
-          content: `Faça um resumo desta transcrição:\n\n"${text}"`,
+          content: `Resuma este áudio transcrito:\n\n"${text}"`,
         },
       ],
       max_tokens: 300,
       temperature: 0.3,
     });
 
-    const summary = summaryRes.choices[0]?.message?.content?.trim() || text.slice(0, 200);
+    const rawSummary = summaryRes.choices[0]?.message?.content?.trim() || '';
+    const refused = !rawSummary || rawSummary.toLowerCase().includes('não posso') || rawSummary.toLowerCase().includes('nao posso') || rawSummary.toLowerCase().includes('cannot');
+    const summary = refused ? null : rawSummary;
 
     // 4. Envia transcrição completa
     for (const chunk of splitMsg(`📝 *TRANSCRIÇÃO COMPLETA*\n\n${text}`)) {
@@ -127,12 +129,14 @@ async function processAudio({ from, to, mediaUrl, mediaType }) {
       await sleep(600);
     }
 
-    // 5. Envia resumo inteligente
-    await client.messages.create({
-      from: to,
-      to: from,
-      body: `📌 *RESUMO*\n\n${summary}`,
-    });
+    // 5. Envia resumo inteligente (se disponível)
+    if (summary) {
+      await client.messages.create({
+        from: to,
+        to: from,
+        body: `📌 *RESUMO*\n\n${summary}`,
+      });
+    }
 
     console.log('  Respostas enviadas!');
 
