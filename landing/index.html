@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TranscreveBot — Transcreva áudios do WhatsApp na hora</title>
+  <style>
+    :root {
+      --green: #25D366;
+      --green-dark: #128C7E;
+      --green-light: #DCF8C6;
+      --dark: #0a0f0d;
+      --card: #111a14;
+      --border: #1f2e22;
+      --text: #e2efe4;
+      --muted: #5a7a5e;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--dark); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; line-height:1.6; }
+
+    /* NAV */
+    nav { display:flex; justify-content:space-between; align-items:center; padding:18px 40px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--dark); z-index:100; }
+    .logo { font-size:20px; font-weight:800; color:var(--green); display:flex; align-items:center; gap:8px; }
+    .nav-cta { background:var(--green); color:#000; font-weight:700; padding:10px 22px; border-radius:8px; text-decoration:none; font-size:14px; transition:opacity .2s; }
+    .nav-cta:hover { opacity:.85; }
+
+    /* HERO */
+    .hero { text-align:center; padding:90px 24px 70px; max-width:780px; margin:0 auto; }
+    .hero-badge { display:inline-flex; align-items:center; gap:8px; background:#0d2b15; border:1px solid #1a5c2a; color:var(--green); font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; padding:6px 16px; border-radius:20px; margin-bottom:28px; }
+    .hero h1 { font-size:clamp(32px,6vw,58px); font-weight:900; line-height:1.1; margin-bottom:20px; }
+    .hero h1 span { color:var(--green); }
+    .hero p { font-size:18px; color:var(--muted); max-width:540px; margin:0 auto 40px; }
+    .hero-btns { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
+    .btn-primary { background:var(--green); color:#000; font-weight:800; padding:16px 32px; border-radius:12px; text-decoration:none; font-size:16px; display:flex; align-items:center; gap:10px; transition:transform .2s, box-shadow .2s; }
+    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(37,211,102,.3); }
+    .btn-secondary { background:transparent; color:var(--text); font-weight:600; padding:16px 32px; border-radius:12px; text-decoration:none; font-size:16px; border:1px solid var(--border); transition:border-color .2s; }
+    .btn-secondary:hover { border-color:var(--green); }
+
+    /* DEMO CHAT */
+    .demo { max-width:400px; margin:70px auto 0; background:var(--card); border:1px solid var(--border); border-radius:20px; overflow:hidden; }
+    .demo-header { background:#1a2b1d; padding:14px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border); }
+    .demo-avatar { width:38px; height:38px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .demo-info strong { display:block; font-size:14px; }
+    .demo-info span { font-size:11px; color:var(--green); }
+    .demo-msgs { padding:16px; display:flex; flex-direction:column; gap:10px; }
+    .msg { max-width:80%; padding:10px 14px; border-radius:12px; font-size:13px; line-height:1.5; }
+    .msg.out { background:#1a4d27; align-self:flex-end; border-bottom-right-radius:4px; }
+    .msg.in  { background:#1e2b20; align-self:flex-start; border-bottom-left-radius:4px; color:var(--text); }
+    .msg.in strong { color:var(--green); }
+    .msg-time { font-size:10px; color:var(--muted); text-align:right; margin-top:4px; }
+    .audio-bubble { display:flex; align-items:center; gap:10px; }
+    .audio-bubble .play { width:32px; height:32px; background:var(--green); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
+    .audio-wave { flex:1; height:28px; background:repeating-linear-gradient(90deg,#25D36640 0px,#25D36640 2px,transparent 2px,transparent 5px); border-radius:4px; }
+
+    /* HOW IT WORKS */
+    .section { padding:80px 24px; max-width:1000px; margin:0 auto; }
+    .section-label { text-align:center; font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+    .section-title { text-align:center; font-size:clamp(26px,4vw,38px); font-weight:800; margin-bottom:48px; }
+    .steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:24px; }
+    .step { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px 24px; text-align:center; transition:border-color .2s; }
+    .step:hover { border-color:var(--green); }
+    .step-num { width:44px; height:44px; background:linear-gradient(135deg,#1a4d27,#25D366); border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:18px; margin:0 auto 16px; }
+    .step h3 { font-size:16px; margin-bottom:8px; }
+    .step p  { font-size:13px; color:var(--muted); }
+
+    /* FEATURES */
+    .features { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; }
+    .feature { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; display:flex; gap:16px; align-items:flex-start; }
+    .feature-icon { font-size:28px; flex-shrink:0; }
+    .feature h4 { font-size:15px; margin-bottom:6px; }
+    .feature p  { font-size:13px; color:var(--muted); }
+
+    /* PRICING */
+    .plans { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px; max-width:800px; margin:0 auto; }
+    .plan { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:32px 28px; position:relative; }
+    .plan.popular { border-color:var(--green); }
+    .plan-badge { position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:var(--green); color:#000; font-size:11px; font-weight:800; padding:4px 14px; border-radius:20px; white-space:nowrap; }
+    .plan h3 { font-size:18px; font-weight:800; margin-bottom:8px; }
+    .plan .price { font-size:38px; font-weight:900; color:var(--green); margin:16px 0 6px; }
+    .plan .price span { font-size:16px; font-weight:400; color:var(--muted); }
+    .plan .desc { font-size:13px; color:var(--muted); margin-bottom:24px; }
+    .plan ul { list-style:none; display:flex; flex-direction:column; gap:10px; margin-bottom:28px; }
+    .plan ul li { font-size:13px; display:flex; align-items:center; gap:8px; }
+    .plan ul li::before { content:'✓'; color:var(--green); font-weight:900; }
+    .btn-plan { display:block; text-align:center; padding:13px; border-radius:10px; font-weight:700; font-size:14px; text-decoration:none; transition:opacity .2s; }
+    .btn-plan.solid { background:var(--green); color:#000; }
+    .btn-plan.outline { border:1px solid var(--border); color:var(--text); }
+    .btn-plan:hover { opacity:.85; }
+
+    /* CTA */
+    .cta-section { text-align:center; padding:80px 24px; background:linear-gradient(135deg,#0d2b15,#0a0f0d); border-top:1px solid var(--border); }
+    .cta-section h2 { font-size:clamp(26px,4vw,40px); font-weight:900; margin-bottom:16px; }
+    .cta-section p  { color:var(--muted); margin-bottom:36px; font-size:16px; }
+    .whatsapp-number { font-size:22px; font-weight:800; color:var(--green); background:#0d2b15; border:1px solid #1a5c2a; display:inline-block; padding:12px 28px; border-radius:12px; margin-bottom:12px; font-family:monospace; letter-spacing:1px; }
+    .cta-hint { font-size:13px; color:var(--muted); }
+
+    /* FOOTER */
+    footer { text-align:center; padding:32px 24px; border-top:1px solid var(--border); color:var(--muted); font-size:12px; }
+
+    @media(max-width:600px) {
+      nav { padding:14px 20px; }
+      .hero { padding:60px 20px 50px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">🎙️ TranscreveBot</div>
+  <a href="#testar" class="nav-cta">Testar grátis</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">🚀 Sem app, sem cadastro</div>
+  <h1>Transcreva áudios do<br/><span>WhatsApp na hora</span></h1>
+  <p>Envie qualquer áudio para o bot e receba em segundos a transcrição completa + resumo inteligente. Direto no WhatsApp.</p>
+  <div class="hero-btns">
+    <a href="#testar" class="btn-primary">
+      <span>📱</span> Testar agora — grátis
+    </a>
+    <a href="#como-funciona" class="btn-secondary">Ver como funciona</a>
+  </div>
+</section>
+
+<!-- DEMO CHAT -->
+<div class="demo" style="margin:0 auto 80px;">
+  <div class="demo-header">
+    <div class="demo-avatar">🤖</div>
+    <div class="demo-info">
+      <strong>TranscreveBot</strong>
+      <span>● online agora</span>
+    </div>
+  </div>
+  <div class="demo-msgs">
+    <div class="msg out">
+      <div class="audio-bubble">
+        <div class="play">▶</div>
+        <div class="audio-wave"></div>
+        <span style="font-size:11px;color:#aaa">0:42</span>
+      </div>
+      <div class="msg-time">19:44</div>
+    </div>
+    <div class="msg in">
+      🎙 <strong>Recebi seu áudio!</strong><br/>Transcrevendo agora... ⏳
+      <div class="msg-time">19:44</div>
+    </div>
+    <div class="msg in">
+      📝 <strong>TRANSCRIÇÃO COMPLETA</strong><br/><br/>
+      "Faz todo sentido, eu acredito muito que os meus pontos foram pensando na parte da operação, do know-how que eu tenho, da experiência e expertise..."
+      <div class="msg-time">19:44</div>
+    </div>
+    <div class="msg in">
+      📌 <strong>RESUMO</strong><br/><br/>
+      O remetente alinha expectativas sobre operação e tomada de decisão conjunta, sugerindo que os direitos finais fiquem com os sócios e que a divisão de receitas seja feita via split automático.
+      <div class="msg-time">19:44</div>
+    </div>
+  </div>
+</div>
+
+<!-- COMO FUNCIONA -->
+<section class="section" id="como-funciona">
+  <div class="section-label">Simples assim</div>
+  <h2 class="section-title">Como funciona</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Salva o número</h3>
+      <p>Adicione o número do TranscreveBot nos seus contatos do WhatsApp.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Envia o áudio</h3>
+      <p>Encaminhe qualquer áudio recebido ou grave um novo direto para o bot.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Recebe em segundos</h3>
+      <p>O bot responde com a transcrição completa + resumo inteligente com IA.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section">
+  <div class="section-label">Funcionalidades</div>
+  <h2 class="section-title">Tudo que você precisa</h2>
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">⚡</div>
+      <div>
+        <h4>Resposta em segundos</h4>
+        <p>Powered by Groq + Whisper Large v3. A transcrição mais rápida e precisa disponível.</p>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🧠</div>
+      <div>
+        <h4>Resumo com IA</h4>
+        <p>Além da transcrição, você recebe um resumo dos pontos principais gerado por LLaMA 3.</p>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🇧🇷</div>
+      <div>
+        <h4>Português nativo</h4>
+        <p>Otimizado para o português brasileiro, incluindo gírias e sotaques regionais.</p>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔒</div>
+      <div>
+        <h4>Privacidade total</h4>
+        <p>Áudios são processados e deletados imediatamente. Nada é armazenado.</p>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📱</div>
+      <div>
+        <h4>Zero instalação</h4>
+        <p>Funciona direto no WhatsApp. Sem app, sem conta, sem configuração.</p>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔁</div>
+      <div>
+        <h4>Qualquer formato</h4>
+        <p>Notas de voz, áudios encaminhados, reuniões gravadas — qualquer coisa.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section">
+  <div class="section-label">Planos</div>
+  <h2 class="section-title">Simples e transparente</h2>
+  <div class="plans">
+    <div class="plan">
+      <h3>Grátis</h3>
+      <div class="price">R$0<span>/mês</span></div>
+      <div class="desc">Para experimentar</div>
+      <ul>
+        <li>10 transcrições/mês</li>
+        <li>Até 2 min por áudio</li>
+        <li>Transcrição completa</li>
+        <li>Resumo com IA</li>
+      </ul>
+      <a href="#testar" class="btn-plan outline">Começar grátis</a>
+    </div>
+    <div class="plan popular">
+      <div class="plan-badge">⭐ Mais popular</div>
+      <h3>Pro</h3>
+      <div class="price">R$29<span>/mês</span></div>
+      <div class="desc">Para uso diário</div>
+      <ul>
+        <li>Transcrições ilimitadas</li>
+        <li>Até 30 min por áudio</li>
+        <li>Transcrição completa</li>
+        <li>Resumo com IA</li>
+        <li>Histórico de 30 dias</li>
+        <li>Suporte prioritário</li>
+      </ul>
+      <a href="#testar" class="btn-plan solid">Assinar Pro</a>
+    </div>
+  </div>
+</section>
+
+<!-- CTA / TESTAR -->
+<section class="cta-section" id="testar">
+  <h2>Comece a usar agora</h2>
+  <p>Salve o número, mande um áudio e veja a mágica acontecer.</p>
+  <div class="whatsapp-number">+1 (415) 523-8886</div><br/>
+  <p class="cta-hint">Mande <strong style="color:var(--green)">join completely-hold</strong> para ativar e depois envie qualquer áudio.</p>
+</section>
+
+<footer>
+  © 2026 TranscreveBot · Powered by Groq Whisper + LLaMA 3
+</footer>
+
+</body>
+</html>
