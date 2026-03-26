@@ -104,7 +104,7 @@ async function processAudio({ from, to, mediaUrl, mediaType }) {
     // 3. Gera resumo com Groq LLaMA
     console.log('  Gerando resumo...');
     const summaryRes = await groq.chat.completions.create({
-      model: 'llama3-8b-8192',
+      model: 'llama-3.1-8b-instant',
       messages: [
         {
           role: 'system',
