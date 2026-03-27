@@ -182,7 +182,7 @@ async function processAudio({ from, to, mediaUrl, mediaType }) {
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-function splitMsg(text, max = 1500) {
+function splitMsg(text, max = 900) {
   if (text.length <= max) return [text];
   const parts = [];
   for (let i = 0; i < text.length; i += max) parts.push(text.slice(i, i + max));
