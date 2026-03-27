@@ -26,7 +26,7 @@ const groq = new Groq({ apiKey: GROQ_KEY });
 app.get('/', (req, res) => res.json({
   status: 'online',
   bot: 'WhatsApp Transcriber',
-  version: '2.0'
+  version: '2.1'
 }));
 
 // ── WEBHOOK ───────────────────────────────────────────────────────────────────
@@ -58,13 +58,48 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // Confirma recebimento imediatamente
+  // Confirma recebimento imediatamente via TwiML (não depende do limite diário)
   twiml.message('🎙 *Recebi seu áudio!*\nTranscrevendo agora... ⏳');
   res.type('text/xml').send(twiml.toString());
 
   // Processa em background
   processAudio({ from, to, mediaUrl, mediaType });
 });
+
+// ── ENVIA COM FALLBACK (Twilio → CallMeBot) ───────────────────────────────────
+async function sendReply(twilioClient, from, to, body) {
+  // Tenta Twilio primeiro
+  try {
+    await twilioClient.messages.create({ from: to, to: from, body });
+    return;
+  } catch (e) {
+    console.log(`  Twilio falhou: ${e.message?.slice(0, 80)}`);
+  }
+
+  // Fallback: CallMeBot
+  const cbPhone  = process.env.CALLMEBOT_PHONE;
+  const cbApiKey = process.env.CALLMEBOT_APIKEY;
+  if (!cbPhone || !cbApiKey) {
+    console.log('  CallMeBot não configurado — mensagem perdida.');
+    return;
+  }
+
+  // Extrai número limpo do destinatário (ex: "whatsapp:+5512996631119" → "5512996631119")
+  const recipientPhone = from.replace(/^whatsapp:\+?/, '');
+
+  if (recipientPhone !== cbPhone) {
+    console.log(`  CallMeBot: número ${recipientPhone} não é o registrado — mensagem perdida.`);
+    return;
+  }
+
+  try {
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${cbPhone}&text=${encodeURIComponent(body)}&apikey=${cbApiKey}`;
+    await axios.get(url);
+    console.log('  Enviado via CallMeBot.');
+  } catch (e) {
+    console.log(`  CallMeBot falhou: ${e.message?.slice(0, 80)}`);
+  }
+}
 
 // ── PROCESSA ÁUDIO ────────────────────────────────────────────────────────────
 async function processAudio({ from, to, mediaUrl, mediaType }) {
@@ -125,17 +160,13 @@ async function processAudio({ from, to, mediaUrl, mediaType }) {
 
     // 4. Envia transcrição completa
     for (const chunk of splitMsg(`📝 *TRANSCRIÇÃO COMPLETA*\n\n${text}`)) {
-      await client.messages.create({ from: to, to: from, body: chunk });
+      await sendReply(client, from, to, chunk);
       await sleep(600);
     }
 
     // 5. Envia resumo inteligente (se disponível)
     if (summary) {
-      await client.messages.create({
-        from: to,
-        to: from,
-        body: `📌 *RESUMO*\n\n${summary}`,
-      });
+      await sendReply(client, from, to, `📌 *RESUMO*\n\n${summary}`);
     }
 
     console.log('  Respostas enviadas!');
@@ -143,11 +174,7 @@ async function processAudio({ from, to, mediaUrl, mediaType }) {
   } catch (err) {
     console.error('  ERRO:', err.message);
     try {
-      await client.messages.create({
-        from: to,
-        to: from,
-        body: '❌ Erro ao transcrever. Tente novamente.',
-      });
+      await sendReply(client, from, to, '❌ Erro ao transcrever. Tente novamente.');
     } catch (_) {}
   } finally {
     try { fs.unlinkSync(tmpPath); } catch (_) {}
