@@ -136,39 +136,38 @@ async function processAudio({ from, to, mediaUrl, mediaType }) {
 
     console.log(`  Transcrito: ${text.length} chars`);
 
-    // 3. Gera resumo com Groq LLaMA
-    console.log('  Gerando resumo...');
-    const summaryRes = await groq.chat.completions.create({
+    // 3. Gera análise com Groq LLaMA
+    console.log('  Gerando análise...');
+    const analysisRes = await groq.chat.completions.create({
       model: 'llama-3.1-8b-instant',
       messages: [
         {
           role: 'system',
-          content: 'Você é um assistente de transcrição. Sua única função é resumir o conteúdo de áudios transcritos em 2-4 frases diretas em português. Resuma fielmente o que foi dito, sem julgamentos, sem recusar, sem comentários adicionais. Apenas o resumo do conteúdo.',
+          content: `Você é um assistente de análise de áudios de vendas. Analise o áudio transcrito e responda EXATAMENTE neste formato, sem texto extra:
+
+- INTENÇÃO: [o que a pessoa quer/precisa]
+- URGÊNCIA: [alta / média / baixa — e por quê em uma frase]
+- FUNIL: [etapa: Descoberta / Consideração / Decisão / Pós-venda]
+- Nota/resumo: [resumo direto do conteúdo em 1-2 frases]`,
         },
         {
           role: 'user',
-          content: `Resuma este áudio transcrito:\n\n"${text}"`,
+          content: `Analise este áudio transcrito:\n\n"${text}"`,
         },
       ],
       max_tokens: 300,
       temperature: 0.3,
     });
 
-    const rawSummary = summaryRes.choices[0]?.message?.content?.trim() || '';
-    const refused = !rawSummary || rawSummary.toLowerCase().includes('não posso') || rawSummary.toLowerCase().includes('nao posso') || rawSummary.toLowerCase().includes('cannot');
-    const summary = refused ? null : rawSummary;
+    const analysis = analysisRes.choices[0]?.message?.content?.trim() || '';
 
-    // 4. Envia transcrição completa
-    for (const chunk of splitMsg(`📝 *TRANSCRIÇÃO COMPLETA*\n\n${text}`)) {
+    // 4. Monta e envia mensagem unificada
+    const fullMsg = `📝 *TRANSCRIÇÃO*\n\n${text}\n\n📊 *ANÁLISE*\n${analysis}`;
+
+    for (const chunk of splitMsg(fullMsg)) {
       await sendReply(client, from, to, chunk);
       await sleep(600);
     }
-
-    // 5. Envia resumo inteligente (se disponível)
-    if (summary) {
-      await sendReply(client, from, to, `📌 *RESUMO*\n\n${summary}`);
-    }
-
     console.log('  Respostas enviadas!');
 
   } catch (err) {
